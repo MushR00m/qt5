@@ -27,28 +27,18 @@ jobs:
         build_type: [static, shared]
     
     steps:
-      - name: Skip if not needed (Static)
-        if: matrix.build_type == 'static' && !inputs.build_static
-        run: |
-          echo "Skipping static build"
-          exit 0
-      
-      - name: Skip if not needed (Shared)
-        if: matrix.build_type == 'shared' && !inputs.build_shared
-        run: |
-          echo "Skipping shared build"
-          exit 0
-      
       - name: Checkout Qt5
-        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         uses: actions/checkout@v4
         with:
           repository: qt/qt5
           ref: ${{ inputs.qt_branch }}
-          fetch-depth: 1
+          fetch-depth: 0
+      
+      - name: Initialize Repository
+        run: |
+          perl init-repository --module-subset=all -f
       
       - name: Install dependencies
-        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -91,10 +81,10 @@ jobs:
             libdrm-dev \
             libgbm-dev \
             libudev-dev \
-            python3
+            python3 \
+            perl
       
       - name: Create build directory
-        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         run: mkdir -p build-${{ matrix.build_type }}
       
       - name: Configure Qt (Static)
@@ -164,39 +154,27 @@ jobs:
         arch: [x64, x86]
     
     steps:
-      - name: Skip if not needed (Static)
-        if: matrix.build_type == 'static' && !inputs.build_static
-        run: |
-          echo "Skipping static build"
-          exit 0
-      
-      - name: Skip if not needed (Shared)
-        if: matrix.build_type == 'shared' && !inputs.build_shared
-        run: |
-          echo "Skipping shared build"
-          exit 0
-      
       - name: Checkout Qt5
-        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         uses: actions/checkout@v4
         with:
           repository: qt/qt5
           ref: ${{ inputs.qt_branch }}
-          fetch-depth: 1
+          fetch-depth: 0
+      
+      - name: Initialize Repository
+        run: |
+          perl init-repository --module-subset=all -f
       
       - name: Setup MSVC
-        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         uses: microsoft/setup-msbuild@v1
       
       - name: Install dependencies
-        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         run: |
           choco install strawberry-perl -y
           choco install cmake -y
           choco install ninja -y
       
       - name: Create build directory
-        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         run: mkdir build-${{ matrix.build_type }}-${{ matrix.arch }}
       
       - name: Configure Qt (Static)
@@ -265,33 +243,22 @@ jobs:
         arch: [arm64, x86_64]
     
     steps:
-      - name: Skip if not needed (Static)
-        if: matrix.build_type == 'static' && !inputs.build_static
-        run: |
-          echo "Skipping static build"
-          exit 0
-      
-      - name: Skip if not needed (Shared)
-        if: matrix.build_type == 'shared' && !inputs.build_shared
-        run: |
-          echo "Skipping shared build"
-          exit 0
-      
       - name: Checkout Qt5
-        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         uses: actions/checkout@v4
         with:
           repository: qt/qt5
           ref: ${{ inputs.qt_branch }}
-          fetch-depth: 1
+          fetch-depth: 0
+      
+      - name: Initialize Repository
+        run: |
+          perl init-repository --module-subset=all -f
       
       - name: Install dependencies
-        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         run: |
           brew install cmake ninja perl
       
       - name: Create build directory
-        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         run: mkdir -p build-${{ matrix.build_type }}-${{ matrix.arch }}
       
       - name: Configure Qt (Static)
