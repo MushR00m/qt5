@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       qt_branch:
-        description: 'Qt branch to build (e.g., dev, 5.15, 6.x)'
+        description: 'Qt branch to build (e.g., v5.15, 6.x, dev)'
         required: true
-        default: '5.15.17'
+        default: 'dev'
       build_static:
         description: 'Build static version'
         required: true
@@ -25,14 +25,22 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [static, shared]
-        exclude:
-          - build_type: static
-            condition: ${{ !inputs.build_static }}
-          - build_type: shared
-            condition: ${{ !inputs.build_shared }}
     
     steps:
+      - name: Skip if not needed (Static)
+        if: matrix.build_type == 'static' && !inputs.build_static
+        run: |
+          echo "Skipping static build"
+          exit 0
+      
+      - name: Skip if not needed (Shared)
+        if: matrix.build_type == 'shared' && !inputs.build_shared
+        run: |
+          echo "Skipping shared build"
+          exit 0
+      
       - name: Checkout Qt5
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         uses: actions/checkout@v4
         with:
           repository: qt/qt5
@@ -40,6 +48,7 @@ jobs:
           fetch-depth: 1
       
       - name: Install dependencies
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -85,12 +94,11 @@ jobs:
             python3
       
       - name: Create build directory
-        run: |
-          mkdir -p build-${{ matrix.build_type }}
-          cd build-${{ matrix.build_type }}
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
+        run: mkdir -p build-${{ matrix.build_type }}
       
       - name: Configure Qt (Static)
-        if: matrix.build_type == 'static'
+        if: matrix.build_type == 'static' && inputs.build_static
         run: |
           cd build-static
           ../configure \
@@ -100,27 +108,11 @@ jobs:
             -confirm-license \
             -release \
             -optimize-size \
-            -no-sse2 \
-            -no-sse3 \
-            -no-ssse3 \
-            -no-sse4.1 \
-            -no-sse4.2 \
-            -no-avx \
             -nomake examples \
-            -nomake tests \
-            -skip qtconnectivity \
-            -no-sql-sqlite \
-            -no-sql-mysql \
-            -no-sql-psql \
-            -no-sql-oci \
-            -no-sql-tds \
-            -no-sql-db2 \
-            -no-sql-ibase \
-            -no-sql-sqlite2 \
-            -no-openssl
+            -nomake tests
       
       - name: Configure Qt (Shared)
-        if: matrix.build_type == 'shared'
+        if: matrix.build_type == 'shared' && inputs.build_shared
         run: |
           cd build-shared
           ../configure \
@@ -129,28 +121,30 @@ jobs:
             -opensource \
             -confirm-license \
             -release \
-            -optimize-size \
             -nomake examples \
             -nomake tests
       
       - name: Build Qt
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         run: |
           cd build-${{ matrix.build_type }}
           make -j$(nproc)
       
       - name: Install Qt
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         run: |
           cd build-${{ matrix.build_type }}
           sudo make install
       
       - name: Create archive
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         run: |
           cd /opt
           tar -czf qt-${{ inputs.qt_branch }}-linux-${{ matrix.build_type }}.tar.gz \
             qt-${{ inputs.qt_branch }}-${{ matrix.build_type }}
-          ls -lh qt-${{ inputs.qt_branch }}-linux-${{ matrix.build_type }}.tar.gz
       
       - name: Upload to Release
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         uses: softprops/action-gh-release@v1
         with:
           files: /opt/qt-${{ inputs.qt_branch }}-linux-${{ matrix.build_type }}.tar.gz
@@ -168,14 +162,22 @@ jobs:
       matrix:
         build_type: [static, shared]
         arch: [x64, x86]
-        exclude:
-          - build_type: static
-            condition: ${{ !inputs.build_static }}
-          - build_type: shared
-            condition: ${{ !inputs.build_shared }}
     
     steps:
+      - name: Skip if not needed (Static)
+        if: matrix.build_type == 'static' && !inputs.build_static
+        run: |
+          echo "Skipping static build"
+          exit 0
+      
+      - name: Skip if not needed (Shared)
+        if: matrix.build_type == 'shared' && !inputs.build_shared
+        run: |
+          echo "Skipping shared build"
+          exit 0
+      
       - name: Checkout Qt5
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         uses: actions/checkout@v4
         with:
           repository: qt/qt5
@@ -183,21 +185,22 @@ jobs:
           fetch-depth: 1
       
       - name: Setup MSVC
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         uses: microsoft/setup-msbuild@v1
       
       - name: Install dependencies
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         run: |
           choco install strawberry-perl -y
           choco install cmake -y
           choco install ninja -y
       
       - name: Create build directory
-        run: |
-          mkdir build-${{ matrix.build_type }}-${{ matrix.arch }}
-          cd build-${{ matrix.build_type }}-${{ matrix.arch }}
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
+        run: mkdir build-${{ matrix.build_type }}-${{ matrix.arch }}
       
       - name: Configure Qt (Static)
-        if: matrix.build_type == 'static'
+        if: matrix.build_type == 'static' && inputs.build_static
         run: |
           cd build-static-${{ matrix.arch }}
           ..\configure.bat ^
@@ -208,11 +211,10 @@ jobs:
             -release ^
             -nomake examples ^
             -nomake tests ^
-            -skip qtconnectivity ^
             -platform win32-msvc
       
       - name: Configure Qt (Shared)
-        if: matrix.build_type == 'shared'
+        if: matrix.build_type == 'shared' && inputs.build_shared
         run: |
           cd build-shared-${{ matrix.arch }}
           ..\configure.bat ^
@@ -226,20 +228,24 @@ jobs:
             -platform win32-msvc
       
       - name: Build Qt
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         run: |
           cd build-${{ matrix.build_type }}-${{ matrix.arch }}
           nmake
       
       - name: Install Qt
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         run: |
           cd build-${{ matrix.build_type }}-${{ matrix.arch }}
           nmake install
       
       - name: Create archive
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         run: |
           powershell -Command "Compress-Archive -Path 'C:\Qt\${{ inputs.qt_branch }}-${{ matrix.build_type }}-${{ matrix.arch }}' -DestinationPath '${{ runner.temp }}\qt-${{ inputs.qt_branch }}-windows-${{ matrix.build_type }}-${{ matrix.arch }}.zip' -Force"
       
       - name: Upload to Release
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         uses: softprops/action-gh-release@v1
         with:
           files: ${{ runner.temp }}\qt-${{ inputs.qt_branch }}-windows-${{ matrix.build_type }}-${{ matrix.arch }}.zip
@@ -257,14 +263,22 @@ jobs:
       matrix:
         build_type: [static, shared]
         arch: [arm64, x86_64]
-        exclude:
-          - build_type: static
-            condition: ${{ !inputs.build_static }}
-          - build_type: shared
-            condition: ${{ !inputs.build_shared }}
     
     steps:
+      - name: Skip if not needed (Static)
+        if: matrix.build_type == 'static' && !inputs.build_static
+        run: |
+          echo "Skipping static build"
+          exit 0
+      
+      - name: Skip if not needed (Shared)
+        if: matrix.build_type == 'shared' && !inputs.build_shared
+        run: |
+          echo "Skipping shared build"
+          exit 0
+      
       - name: Checkout Qt5
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         uses: actions/checkout@v4
         with:
           repository: qt/qt5
@@ -272,17 +286,18 @@ jobs:
           fetch-depth: 1
       
       - name: Install dependencies
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         run: |
           brew install cmake ninja perl
       
       - name: Create build directory
-        run: |
-          mkdir -p build-${{ matrix.build_type }}-${{ matrix.arch }}
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
+        run: mkdir -p build-${{ matrix.build_type }}-${{ matrix.arch }}
       
       - name: Configure Qt (Static)
-        if: matrix.build_type == 'static'
+        if: matrix.build_type == 'static' && inputs.build_static
         run: |
-          cd build-${{ matrix.build_type }}-${{ matrix.arch }}
+          cd build-static-${{ matrix.arch }}
           ../configure \
             -static \
             -prefix /opt/qt-${{ inputs.qt_branch }}-static-${{ matrix.arch }} \
@@ -291,14 +306,13 @@ jobs:
             -release \
             -nomake examples \
             -nomake tests \
-            -skip qtconnectivity \
             -platform macx-clang \
             -arch ${{ matrix.arch }}
       
       - name: Configure Qt (Shared)
-        if: matrix.build_type == 'shared'
+        if: matrix.build_type == 'shared' && inputs.build_shared
         run: |
-          cd build-${{ matrix.build_type }}-${{ matrix.arch }}
+          cd build-shared-${{ matrix.arch }}
           ../configure \
             -shared \
             -prefix /opt/qt-${{ inputs.qt_branch }}-shared-${{ matrix.arch }} \
@@ -311,23 +325,26 @@ jobs:
             -arch ${{ matrix.arch }}
       
       - name: Build Qt
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         run: |
           cd build-${{ matrix.build_type }}-${{ matrix.arch }}
           make -j$(sysctl -n hw.ncpu)
       
       - name: Install Qt
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         run: |
           cd build-${{ matrix.build_type }}-${{ matrix.arch }}
           sudo make install
       
       - name: Create archive
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         run: |
           cd /opt
           tar -czf qt-${{ inputs.qt_branch }}-macos-${{ matrix.build_type }}-${{ matrix.arch }}.tar.gz \
             qt-${{ inputs.qt_branch }}-${{ matrix.build_type }}-${{ matrix.arch }}
-          ls -lh qt-${{ inputs.qt_branch }}-macos-${{ matrix.build_type }}-${{ matrix.arch }}.tar.gz
       
       - name: Upload to Release
+        if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
         uses: softprops/action-gh-release@v1
         with:
           files: /opt/qt-${{ inputs.qt_branch }}-macos-${{ matrix.build_type }}-${{ matrix.arch }}.tar.gz
