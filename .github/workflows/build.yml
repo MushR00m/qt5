@@ -290,8 +290,7 @@ jobs:
             -release \
             -nomake examples \
             -nomake tests \
-            -platform macx-clang \
-            -arch ${{ matrix.arch }}
+            -platform macx-clang-${{ matrix.arch }}
       
       - name: Configure Qt (Shared)
         if: matrix.build_type == 'shared' && inputs.build_shared
@@ -306,8 +305,7 @@ jobs:
             -release \
             -nomake examples \
             -nomake tests \
-            -platform macx-clang \
-            -arch ${{ matrix.arch }}
+            -platform macx-clang-${{ matrix.arch }}
       
       - name: Build Qt
         if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
