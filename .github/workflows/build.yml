@@ -89,6 +89,7 @@ jobs:
       
       - name: Configure Qt (Static)
         if: matrix.build_type == 'static' && inputs.build_static
+        shell: bash
         run: |
           cd build-static
           ../configure \
@@ -103,6 +104,7 @@ jobs:
       
       - name: Configure Qt (Shared)
         if: matrix.build_type == 'shared' && inputs.build_shared
+        shell: bash
         run: |
           cd build-shared
           ../configure \
@@ -116,18 +118,21 @@ jobs:
       
       - name: Build Qt
         if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
+        shell: bash
         run: |
           cd build-${{ matrix.build_type }}
           make -j$(nproc)
       
       - name: Install Qt
         if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
+        shell: bash
         run: |
           cd build-${{ matrix.build_type }}
           sudo make install
       
       - name: Create archive
         if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
+        shell: bash
         run: |
           cd /opt
           tar -czf qt-${{ inputs.qt_branch }}-linux-${{ matrix.build_type }}.tar.gz \
@@ -162,6 +167,7 @@ jobs:
           fetch-depth: 0
       
       - name: Initialize Repository
+        shell: cmd
         run: |
           perl init-repository --module-subset=all -f
       
@@ -169,16 +175,19 @@ jobs:
         uses: microsoft/setup-msbuild@v1
       
       - name: Install dependencies
+        shell: cmd
         run: |
           choco install strawberry-perl -y
           choco install cmake -y
           choco install ninja -y
       
       - name: Create build directory
+        shell: cmd
         run: mkdir build-${{ matrix.build_type }}-${{ matrix.arch }}
       
       - name: Configure Qt (Static)
         if: matrix.build_type == 'static' && inputs.build_static
+        shell: cmd
         run: |
           cd build-static-${{ matrix.arch }}
           ..\configure.bat ^
@@ -193,6 +202,7 @@ jobs:
       
       - name: Configure Qt (Shared)
         if: matrix.build_type == 'shared' && inputs.build_shared
+        shell: cmd
         run: |
           cd build-shared-${{ matrix.arch }}
           ..\configure.bat ^
@@ -207,20 +217,23 @@ jobs:
       
       - name: Build Qt
         if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
+        shell: cmd
         run: |
           cd build-${{ matrix.build_type }}-${{ matrix.arch }}
           nmake
       
       - name: Install Qt
         if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
+        shell: cmd
         run: |
           cd build-${{ matrix.build_type }}-${{ matrix.arch }}
           nmake install
       
       - name: Create archive
         if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
+        shell: powershell
         run: |
-          powershell -Command "Compress-Archive -Path 'C:\Qt\${{ inputs.qt_branch }}-${{ matrix.build_type }}-${{ matrix.arch }}' -DestinationPath '${{ runner.temp }}\qt-${{ inputs.qt_branch }}-windows-${{ matrix.build_type }}-${{ matrix.arch }}.zip' -Force"
+          Compress-Archive -Path 'C:\Qt\${{ inputs.qt_branch }}-${{ matrix.build_type }}-${{ matrix.arch }}' -DestinationPath '${{ runner.temp }}\qt-${{ inputs.qt_branch }}-windows-${{ matrix.build_type }}-${{ matrix.arch }}.zip' -Force
       
       - name: Upload to Release
         if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
@@ -251,18 +264,22 @@ jobs:
           fetch-depth: 0
       
       - name: Initialize Repository
+        shell: bash
         run: |
           perl init-repository --module-subset=all -f
       
       - name: Install dependencies
+        shell: bash
         run: |
           brew install cmake ninja perl
       
       - name: Create build directory
+        shell: bash
         run: mkdir -p build-${{ matrix.build_type }}-${{ matrix.arch }}
       
       - name: Configure Qt (Static)
         if: matrix.build_type == 'static' && inputs.build_static
+        shell: bash
         run: |
           cd build-static-${{ matrix.arch }}
           ../configure \
@@ -278,6 +295,7 @@ jobs:
       
       - name: Configure Qt (Shared)
         if: matrix.build_type == 'shared' && inputs.build_shared
+        shell: bash
         run: |
           cd build-shared-${{ matrix.arch }}
           ../configure \
@@ -293,18 +311,21 @@ jobs:
       
       - name: Build Qt
         if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
+        shell: bash
         run: |
           cd build-${{ matrix.build_type }}-${{ matrix.arch }}
           make -j$(sysctl -n hw.ncpu)
       
       - name: Install Qt
         if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
+        shell: bash
         run: |
           cd build-${{ matrix.build_type }}-${{ matrix.arch }}
           sudo make install
       
       - name: Create archive
         if: (matrix.build_type == 'static' && inputs.build_static) || (matrix.build_type == 'shared' && inputs.build_shared)
+        shell: bash
         run: |
           cd /opt
           tar -czf qt-${{ inputs.qt_branch }}-macos-${{ matrix.build_type }}-${{ matrix.arch }}.tar.gz \
