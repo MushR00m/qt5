@@ -6,7 +6,7 @@ on:
       qt_branch:
         description: 'Qt branch to build (e.g., dev, 5.15, 6.x)'
         required: true
-        default: 'dev'
+        default: '5.15.17'
       build_static:
         description: 'Build static version'
         required: true
