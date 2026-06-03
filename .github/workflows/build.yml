@@ -1,0 +1,357 @@
+name: Qt Build and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      qt_branch:
+        description: 'Qt branch to build (e.g., dev, 5.15, 6.x)'
+        required: true
+        default: 'dev'
+      build_static:
+        description: 'Build static version'
+        required: true
+        default: true
+        type: boolean
+      build_shared:
+        description: 'Build shared version'
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [static, shared]
+        exclude:
+          - build_type: static
+            condition: ${{ !inputs.build_static }}
+          - build_type: shared
+            condition: ${{ !inputs.build_shared }}
+    
+    steps:
+      - name: Checkout Qt5
+        uses: actions/checkout@v4
+        with:
+          repository: qt/qt5
+          ref: ${{ inputs.qt_branch }}
+          fetch-depth: 1
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libxext-dev \
+            libxfixes-dev \
+            libxrender-dev \
+            libxinerama-dev \
+            libxrandr-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxkbcommon-dev \
+            libxkbcommon-x11-dev \
+            libdbus-1-dev \
+            libfontconfig1-dev \
+            libfreetype6-dev \
+            libharfbuzz-dev \
+            libssl-dev \
+            libsqlite3-dev \
+            zlib1g-dev \
+            libjpeg-dev \
+            libpng-dev \
+            libglib2.0-dev \
+            libglu1-mesa-dev \
+            libegl1-mesa-dev \
+            libwayland-dev \
+            libxcb1-dev \
+            libxcb-glx0-dev \
+            libxcb-util0-dev \
+            libxcb-util-dev \
+            libxcb-xfixes0-dev \
+            libxcb-randr0-dev \
+            libxcb-render-util0-dev \
+            libxcb-shape0-dev \
+            libxcb-sync-dev \
+            libxcb-xf86dri0-dev \
+            libxcb-xkb-dev \
+            libxkbcommon-dev \
+            libxkbcommon-x11-dev \
+            libdrm-dev \
+            libgbm-dev \
+            libudev-dev \
+            python3
+      
+      - name: Create build directory
+        run: |
+          mkdir -p build-${{ matrix.build_type }}
+          cd build-${{ matrix.build_type }}
+      
+      - name: Configure Qt (Static)
+        if: matrix.build_type == 'static'
+        run: |
+          cd build-static
+          ../configure \
+            -static \
+            -prefix /opt/qt-${{ inputs.qt_branch }}-static \
+            -opensource \
+            -confirm-license \
+            -release \
+            -optimize-size \
+            -no-sse2 \
+            -no-sse3 \
+            -no-ssse3 \
+            -no-sse4.1 \
+            -no-sse4.2 \
+            -no-avx \
+            -nomake examples \
+            -nomake tests \
+            -skip qtconnectivity \
+            -no-sql-sqlite \
+            -no-sql-mysql \
+            -no-sql-psql \
+            -no-sql-oci \
+            -no-sql-tds \
+            -no-sql-db2 \
+            -no-sql-ibase \
+            -no-sql-sqlite2 \
+            -no-openssl
+      
+      - name: Configure Qt (Shared)
+        if: matrix.build_type == 'shared'
+        run: |
+          cd build-shared
+          ../configure \
+            -shared \
+            -prefix /opt/qt-${{ inputs.qt_branch }}-shared \
+            -opensource \
+            -confirm-license \
+            -release \
+            -optimize-size \
+            -nomake examples \
+            -nomake tests
+      
+      - name: Build Qt
+        run: |
+          cd build-${{ matrix.build_type }}
+          make -j$(nproc)
+      
+      - name: Install Qt
+        run: |
+          cd build-${{ matrix.build_type }}
+          sudo make install
+      
+      - name: Create archive
+        run: |
+          cd /opt
+          tar -czf qt-${{ inputs.qt_branch }}-linux-${{ matrix.build_type }}.tar.gz \
+            qt-${{ inputs.qt_branch }}-${{ matrix.build_type }}
+          ls -lh qt-${{ inputs.qt_branch }}-linux-${{ matrix.build_type }}.tar.gz
+      
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: /opt/qt-${{ inputs.qt_branch }}-linux-${{ matrix.build_type }}.tar.gz
+          tag_name: qt-${{ inputs.qt_branch }}-build-${{ github.run_number }}
+          draft: true
+          prerelease: false
+          name: Qt ${{ inputs.qt_branch }} Build #${{ github.run_number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-windows:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [static, shared]
+        arch: [x64, x86]
+        exclude:
+          - build_type: static
+            condition: ${{ !inputs.build_static }}
+          - build_type: shared
+            condition: ${{ !inputs.build_shared }}
+    
+    steps:
+      - name: Checkout Qt5
+        uses: actions/checkout@v4
+        with:
+          repository: qt/qt5
+          ref: ${{ inputs.qt_branch }}
+          fetch-depth: 1
+      
+      - name: Setup MSVC
+        uses: microsoft/setup-msbuild@v1
+      
+      - name: Install dependencies
+        run: |
+          choco install strawberry-perl -y
+          choco install cmake -y
+          choco install ninja -y
+      
+      - name: Create build directory
+        run: |
+          mkdir build-${{ matrix.build_type }}-${{ matrix.arch }}
+          cd build-${{ matrix.build_type }}-${{ matrix.arch }}
+      
+      - name: Configure Qt (Static)
+        if: matrix.build_type == 'static'
+        run: |
+          cd build-static-${{ matrix.arch }}
+          ..\configure.bat ^
+            -static ^
+            -prefix "C:\Qt\${{ inputs.qt_branch }}-static-${{ matrix.arch }}" ^
+            -opensource ^
+            -confirm-license ^
+            -release ^
+            -nomake examples ^
+            -nomake tests ^
+            -skip qtconnectivity ^
+            -platform win32-msvc
+      
+      - name: Configure Qt (Shared)
+        if: matrix.build_type == 'shared'
+        run: |
+          cd build-shared-${{ matrix.arch }}
+          ..\configure.bat ^
+            -shared ^
+            -prefix "C:\Qt\${{ inputs.qt_branch }}-shared-${{ matrix.arch }}" ^
+            -opensource ^
+            -confirm-license ^
+            -release ^
+            -nomake examples ^
+            -nomake tests ^
+            -platform win32-msvc
+      
+      - name: Build Qt
+        run: |
+          cd build-${{ matrix.build_type }}-${{ matrix.arch }}
+          nmake
+      
+      - name: Install Qt
+        run: |
+          cd build-${{ matrix.build_type }}-${{ matrix.arch }}
+          nmake install
+      
+      - name: Create archive
+        run: |
+          powershell -Command "Compress-Archive -Path 'C:\Qt\${{ inputs.qt_branch }}-${{ matrix.build_type }}-${{ matrix.arch }}' -DestinationPath '${{ runner.temp }}\qt-${{ inputs.qt_branch }}-windows-${{ matrix.build_type }}-${{ matrix.arch }}.zip' -Force"
+      
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ runner.temp }}\qt-${{ inputs.qt_branch }}-windows-${{ matrix.build_type }}-${{ matrix.arch }}.zip
+          tag_name: qt-${{ inputs.qt_branch }}-build-${{ github.run_number }}
+          draft: true
+          prerelease: false
+          name: Qt ${{ inputs.qt_branch }} Build #${{ github.run_number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-macos:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [static, shared]
+        arch: [arm64, x86_64]
+        exclude:
+          - build_type: static
+            condition: ${{ !inputs.build_static }}
+          - build_type: shared
+            condition: ${{ !inputs.build_shared }}
+    
+    steps:
+      - name: Checkout Qt5
+        uses: actions/checkout@v4
+        with:
+          repository: qt/qt5
+          ref: ${{ inputs.qt_branch }}
+          fetch-depth: 1
+      
+      - name: Install dependencies
+        run: |
+          brew install cmake ninja perl
+      
+      - name: Create build directory
+        run: |
+          mkdir -p build-${{ matrix.build_type }}-${{ matrix.arch }}
+      
+      - name: Configure Qt (Static)
+        if: matrix.build_type == 'static'
+        run: |
+          cd build-${{ matrix.build_type }}-${{ matrix.arch }}
+          ../configure \
+            -static \
+            -prefix /opt/qt-${{ inputs.qt_branch }}-static-${{ matrix.arch }} \
+            -opensource \
+            -confirm-license \
+            -release \
+            -nomake examples \
+            -nomake tests \
+            -skip qtconnectivity \
+            -platform macx-clang \
+            -arch ${{ matrix.arch }}
+      
+      - name: Configure Qt (Shared)
+        if: matrix.build_type == 'shared'
+        run: |
+          cd build-${{ matrix.build_type }}-${{ matrix.arch }}
+          ../configure \
+            -shared \
+            -prefix /opt/qt-${{ inputs.qt_branch }}-shared-${{ matrix.arch }} \
+            -opensource \
+            -confirm-license \
+            -release \
+            -nomake examples \
+            -nomake tests \
+            -platform macx-clang \
+            -arch ${{ matrix.arch }}
+      
+      - name: Build Qt
+        run: |
+          cd build-${{ matrix.build_type }}-${{ matrix.arch }}
+          make -j$(sysctl -n hw.ncpu)
+      
+      - name: Install Qt
+        run: |
+          cd build-${{ matrix.build_type }}-${{ matrix.arch }}
+          sudo make install
+      
+      - name: Create archive
+        run: |
+          cd /opt
+          tar -czf qt-${{ inputs.qt_branch }}-macos-${{ matrix.build_type }}-${{ matrix.arch }}.tar.gz \
+            qt-${{ inputs.qt_branch }}-${{ matrix.build_type }}-${{ matrix.arch }}
+          ls -lh qt-${{ inputs.qt_branch }}-macos-${{ matrix.build_type }}-${{ matrix.arch }}.tar.gz
+      
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: /opt/qt-${{ inputs.qt_branch }}-macos-${{ matrix.build_type }}-${{ matrix.arch }}.tar.gz
+          tag_name: qt-${{ inputs.qt_branch }}-build-${{ github.run_number }}
+          draft: true
+          prerelease: false
+          name: Qt ${{ inputs.qt_branch }} Build #${{ github.run_number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  create-release:
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Create Release Notes
+        run: |
+          echo "## Qt Build Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ inputs.qt_branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Number:** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Build Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- Static Build: ${{ inputs.build_static }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Shared Build: ${{ inputs.build_shared }}" >> $GITHUB_STEP_SUMMARY
